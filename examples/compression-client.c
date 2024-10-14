@@ -11,6 +11,7 @@ int main(int argc, char **argv)
     int eventStatus;
     char message[1024];
     char addressBuffer[ENET_ADDRESS_MAX_LENGTH];
+    int running = 1;
 
     /* Initialize enet6 */
     if (enet_initialize() != 0)
@@ -51,7 +52,7 @@ int main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    while (1)
+    while (running)
     {
         eventStatus = enet_host_service(clientHost, &event, 100);
 
@@ -80,12 +81,17 @@ int main(int argc, char **argv)
             printf("> ");
             fgets(message, sizeof(message), stdin);
 
-            if (strlen(message) > 0)
+            if (strlen(message) > 0 && strcmp(message, "\n") != 0)
             {
                 /* Build a packet passing our bytes, length and flags (reliable means this packet will be resent if lost) */
                 ENetPacket* packet = enet_packet_create(message, strlen(message) + 1, ENET_PACKET_FLAG_RELIABLE);
                 /* Send the packet to the server on channel 0 */
                 enet_peer_send(serverPeer, 0, packet);
+            }
+            else
+            {
+                running = 0;
+                enet_peer_disconnect_now(serverPeer, 0);
             }
         }
     }
