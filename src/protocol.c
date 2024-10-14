@@ -77,10 +77,11 @@ enet_protocol_dispatch_incoming_commands (ENetHost * host, ENetEvent * event)
 
            return 1;
            
+       case ENET_PEER_STATE_TIMEDOUT:
        case ENET_PEER_STATE_ZOMBIE:
            host -> recalculateBandwidthLimits = 1;
 
-           event -> type = ENET_EVENT_TYPE_DISCONNECT_TIMEOUT;
+           event -> type = (peer->state == ENET_PEER_STATE_TIMEDOUT) ? ENET_EVENT_TYPE_DISCONNECT_TIMEOUT : ENET_EVENT_TYPE_DISCONNECT;
            event -> peer = peer;
            event -> data = peer -> eventData;
 
@@ -179,7 +180,7 @@ enet_protocol_notify_disconnect_timeout (ENetHost * host, ENetPeer * peer, ENetE
     {
         peer -> eventData = 0;
 
-        enet_protocol_dispatch_state (host, peer, ENET_PEER_STATE_ZOMBIE);
+        enet_protocol_dispatch_state (host, peer, ENET_PEER_STATE_TIMEDOUT);
     }
 }
 
@@ -852,7 +853,7 @@ enet_protocol_handle_throttle_configure (ENetHost * host, ENetPeer * peer, const
 static int
 enet_protocol_handle_disconnect (ENetHost * host, ENetPeer * peer, const ENetProtocol * command)
 {
-    if (peer -> state == ENET_PEER_STATE_DISCONNECTED || peer -> state == ENET_PEER_STATE_ZOMBIE || peer -> state == ENET_PEER_STATE_ACKNOWLEDGING_DISCONNECT)
+    if (peer -> state == ENET_PEER_STATE_DISCONNECTED || peer -> state == ENET_PEER_STATE_ZOMBIE || peer->state == ENET_PEER_STATE_TIMEDOUT || peer -> state == ENET_PEER_STATE_ACKNOWLEDGING_DISCONNECT)
       return 0;
 
     enet_peer_reset_queues (peer);
@@ -886,7 +887,7 @@ enet_protocol_handle_acknowledge (ENetHost * host, ENetEvent * event, ENetPeer *
            receivedReliableSequenceNumber;
     ENetProtocolCommand commandNumber;
 
-    if (peer -> state == ENET_PEER_STATE_DISCONNECTED || peer -> state == ENET_PEER_STATE_ZOMBIE)
+    if (peer -> state == ENET_PEER_STATE_DISCONNECTED || peer -> state == ENET_PEER_STATE_ZOMBIE || peer->state == ENET_PEER_STATE_TIMEDOUT)
       return 0;
 
     receivedSentTime = ENET_NET_TO_HOST_16 (command -> acknowledge.receivedSentTime);
@@ -1082,6 +1083,7 @@ enet_protocol_handle_incoming_commands (ENetHost * host, ENetEvent * event)
        peer = & host -> peers [peerID];
 
        if (peer -> state == ENET_PEER_STATE_DISCONNECTED ||
+           peer -> state == ENET_PEER_STATE_TIMEDOUT ||
            peer -> state == ENET_PEER_STATE_ZOMBIE ||
            (!enet_address_equal(&host->receivedAddress, &peer->address) &&
             !enet_address_is_broadcast(&peer->address)) ||
@@ -1283,6 +1285,7 @@ enet_protocol_handle_incoming_commands (ENetHost * host, ENetEvent * event)
            case ENET_PEER_STATE_DISCONNECTING:
            case ENET_PEER_STATE_ACKNOWLEDGING_CONNECT:
            case ENET_PEER_STATE_DISCONNECTED:
+           case ENET_PEER_STATE_TIMEDOUT:
            case ENET_PEER_STATE_ZOMBIE:
               break;
 
@@ -1693,6 +1696,7 @@ enet_protocol_send_outgoing_commands (ENetHost * host, ENetEvent * event, int ch
          ++ currentPeer)
     {
         if (currentPeer -> state == ENET_PEER_STATE_DISCONNECTED ||
+            currentPeer -> state == ENET_PEER_STATE_TIMEDOUT ||
             currentPeer -> state == ENET_PEER_STATE_ZOMBIE ||
             (sendPass > 0 && ! (currentPeer -> flags & ENET_PEER_FLAG_CONTINUE_SENDING)))
           continue;

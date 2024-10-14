@@ -205,7 +205,8 @@ typedef enum _ENetPeerState
    ENET_PEER_STATE_DISCONNECT_LATER            = 6,
    ENET_PEER_STATE_DISCONNECTING               = 7,
    ENET_PEER_STATE_ACKNOWLEDGING_DISCONNECT    = 8,
-   ENET_PEER_STATE_ZOMBIE                      = 9 
+   ENET_PEER_STATE_ZOMBIE                      = 9,
+   ENET_PEER_STATE_TIMEDOUT                    = 10 
 } ENetPeerState;
 
 #ifndef ENET_BUFFER_MAXIMUM
