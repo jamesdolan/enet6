@@ -39,8 +39,6 @@ namespace ENet6
         Unsequenced = 1 << 1,
         NoAllocate = 1 << 2,
         UnreliableFragmented = 1 << 3,
-        Instant = 1 << 4,
-        Unthrottled = 1 << 5,
         Sent = 1 << 8
     }
 
@@ -65,7 +63,8 @@ namespace ENet6
         DisconnectLater = 6,
         Disconnecting = 7,
         AcknowledgingDisconnect = 8,
-        Zombie = 9
+        Zombie = 9,
+        TimedOut = 10
     }
 
     public enum AddressType
@@ -182,6 +181,11 @@ namespace ENet6
             }
         }
 
+        public void ConvertToIPV6()
+        {
+            Native.enet_address_convert_ipv6(ref nativeAddress);
+        }
+
         public string GetIP()
         {
             StringBuilder ip = new StringBuilder(1025);
@@ -216,6 +220,22 @@ namespace ENet6
                 throw new ArgumentNullException("hostName");
 
             return Native.enet_address_set_host(ref nativeAddress, type, hostName) == 0;
+        }
+
+        public static Address BuildAny(AddressType type)
+        {
+            Address address = new Address();
+            Native.enet_address_build_any(ref address.nativeAddress, type);
+
+            return address;
+        }
+
+        public static Address BuildLoopback(AddressType type)
+        {
+            Address address = new Address();
+            Native.enet_address_build_loopback(ref address.nativeAddress, type);
+
+            return address;
         }
     }
 
@@ -1085,6 +1105,15 @@ namespace ENet6
 
         [DllImport(nativeLibrary, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int enet_address_get_host(ref ENetAddress address, StringBuilder hostName, IntPtr nameLength);
+
+        [DllImport(nativeLibrary, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern void enet_address_build_any(ref ENetAddress address, AddressType type);
+
+        [DllImport(nativeLibrary, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern void enet_address_build_loopback(ref ENetAddress address, AddressType type);
+
+        [DllImport(nativeLibrary, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern void enet_address_convert_ipv6(ref ENetAddress address);
 
         [DllImport(nativeLibrary, CallingConvention = CallingConvention.Cdecl)]
         internal static extern IntPtr enet_packet_create(byte[] data, IntPtr dataLength, PacketFlags flags);
